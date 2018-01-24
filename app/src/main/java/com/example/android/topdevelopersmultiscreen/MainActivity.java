@@ -46,7 +46,7 @@ public class MainActivity extends AppCompatActivity {
         listView = findViewById(R.id.mainListView);
         listView.setOnItemClickListener(new ListClickHandler());
 
-        new GetJSON().execute("https://api.stackexchange.com/docs/users#page=1&pagesize=10&order=desc&sort=reputation&filter=default&site=stackoverflow&run=true");
+        new GetJSON().execute("https://api.stackexchange.com/2.2/users?page=1&pagesize=10&order=desc&sort=reputation&site=stackoverflow");
     }
 
     public class ItemAdapter extends ArrayAdapter {
@@ -104,7 +104,7 @@ public class MainActivity extends AppCompatActivity {
             HttpURLConnection connection = null;
             BufferedReader reader = null;
 
-            try {
+            try{
                 URL urlStackOverflow = new URL(params[0]);
                 connection = (HttpURLConnection) urlStackOverflow.openConnection();
                 connection.connect();
@@ -114,36 +114,34 @@ public class MainActivity extends AppCompatActivity {
                 reader = new BufferedReader(new InputStreamReader(stream));
 
                 StringBuffer buffer = new StringBuffer();
-
                 String line;
                 while ((line = reader.readLine()) != null) {
                     buffer.append(line);
                 }
 
                 String finalJson = buffer.toString();
-
                 JSONObject parentObject = new JSONObject(finalJson);
-                JSONArray parentArray = parentObject.getJSONArray("item");
+                JSONArray parentArray = parentObject.getJSONArray("items");
 
                 List<ItemModel> itemModelList = new ArrayList<>();
-                    for(int i = 0; i < parentArray.length(); i++) {
-                        JSONObject finalObject = parentArray.getJSONObject(i);
-                        ItemModel itemModel = new ItemModel();
-                        itemModel.setDisplay_name(finalObject.getString("display_name"));
-                        itemModel.setProfile_image(finalObject.getString("profile_image"));
-                        itemModel.setLocation(finalObject.getString("location"));
+                for(int i = 0; i < parentArray.length(); i++) {
+                    JSONObject finalObject = parentArray.getJSONObject(i);
+                    ItemModel itemModel = new ItemModel();
+                    itemModel.setDisplay_name(finalObject.getString("display_name"));
+                    itemModel.setProfile_image(finalObject.getString("profile_image"));
+                    itemModel.setLocation(finalObject.getString("location"));
 
-                        List<ItemModel.BadgeCounts> badgeCountsList = new ArrayList<>();
-                        for(int j = 0; j < finalObject.getJSONArray("badge_counts").length(); j++) {
-                            ItemModel.BadgeCounts badgeCounts = new ItemModel.BadgeCounts();
-                            badgeCounts.setBronze(finalObject.getJSONArray("badge_counts").getJSONObject(j).getInt("bronze"));
-                            badgeCounts.setGold(finalObject.getJSONArray("badge_counts").getJSONObject(j).getInt("gold"));
-                            badgeCounts.setSilver(finalObject.getJSONArray("badge_counts").getJSONObject(j).getInt("silver"));
-                            badgeCountsList.add(badgeCounts);
-                        }
-                        itemModel.setBadge_counts(badgeCountsList);
-                        itemModelList.add(itemModel);
-                    }
+                    List<ItemModel.BadgeCounts> badgeCountsList = new ArrayList<>();
+
+                    JSONObject badges = finalObject.getJSONObject("badge_counts");
+                    ItemModel.BadgeCounts badgeCounts = new ItemModel.BadgeCounts();
+                    badgeCounts.setBronze(badges.optInt("bronze"));
+                    badgeCounts.setGold(badges.optInt("gold"));
+                    badgeCounts.setSilver(badges.optInt("silver"));
+                    badgeCountsList.add(badgeCounts);
+                    itemModel.setBadge_counts(badgeCountsList);
+                    itemModelList.add(itemModel);
+                }
                 return itemModelList;
 
             } catch (MalformedURLException e) {
@@ -153,15 +151,15 @@ public class MainActivity extends AppCompatActivity {
             } catch (JSONException e) {
                 e.printStackTrace();
             } finally {
-                if (connection != null) {
+                if(connection != null){
                     connection.disconnect();
                 }
-                try {
-                    if (reader != null) {
+                if(reader != null){
+                    try {
                         reader.close();
+                    } catch (IOException e) {
+                        e.printStackTrace();
                     }
-                } catch (IOException e) {
-                    e.printStackTrace();
                 }
             }
             return null;
